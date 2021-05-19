@@ -10,6 +10,7 @@ import org.vag.sag.terracottademo.dom.Person;
 import org.vag.sag.terracottademo.exceptions.PersonNotFoundException;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import java.net.URL;
 import java.util.List;
 
@@ -31,7 +32,22 @@ public class PersonService {
         logger.info("personCache Initialized");
     }
 
-    public Person createPerson(Person person){
+    @PreDestroy
+    public void disconnect(){
+        if(!personCache.isTerracottaClustered()){
+            logger.info("Cache flushing");
+            personCache.flush();
+
+            logger.info("Cache manager shutdown");
+            manager.shutdown();
+        }
+    }
+
+    public Person createPerson(Person person) throws Exception {
+        Element oldEle = personCache.get(person.getId());
+        if(oldEle != null){
+            throw new Exception("Element with ID= " + person.getId() + " already exists in the cache");
+        }
         Element element = new Element(person.getId(), person);
         personCache.put(element);
 
@@ -53,8 +69,15 @@ public class PersonService {
 
     public Person getPerson(String id) throws PersonNotFoundException {
         Element element = personCache.get(id);
-        if(element != null)
-            return (Person)element.getObjectValue();
+        if(element != null) {
+            Object object = element.getObjectValue();
+            if(object instanceof Person) {
+                return (Person)object;
+            }else{
+                logger.error("Cache object with ID=" + id + " is not of type Person");
+                throw new PersonNotFoundException("Person with ID=" + id + " is not found in the cache");
+            }
+        }
         else
             throw new PersonNotFoundException("Person with ID=" + id + " is not found in the cache");
     }

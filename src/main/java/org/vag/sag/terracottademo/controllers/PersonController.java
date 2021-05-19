@@ -36,8 +36,13 @@ public class PersonController {
     }
 
     @RequestMapping(method = RequestMethod.POST,value = "/persons",produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Person> addNewPerson(@RequestBody Person person){
-        person = personService.createPerson(person);
+    public ResponseEntity addNewPerson(@RequestBody Person person){
+        try {
+            person = personService.createPerson(person);
+        } catch (Exception e) {
+            logger.info(e.getMessage());
+            return new ResponseEntity<String>(e.getMessage(), HttpStatus.BAD_REQUEST);
+        }
         return new ResponseEntity<Person>(person, HttpStatus.OK);
     }
 
